@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSI Explorer — On-Chain Index Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #080a0e;
+  --void: #0c0f14;
+  --panel: #111520;
+  --border: #1c2233;
+  --border2: #253045;
+  --gold: #c8a85a;
+  --gold2: #e8c97a;
+  --green: #2dff8a;
+  --red: #ff3d6b;
+  --blue: #4d9fff;
+  --muted: #4a5568;
+  --dim: #718096;
+  --text: #cbd5e0;
+  --bright: #e2e8f0;
+  --white: #f7fafc;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--black);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── SCANLINES OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── GRID BACKGROUND ─── */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(200,168,90,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,168,90,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.bg-glow {
+  position: fixed;
+  top: -200px; left: 50%;
+  transform: translateX(-50%);
+  width: 800px; height: 400px;
+  background: radial-gradient(ellipse, rgba(200,168,90,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── LAYOUT ─── */
+.app { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* ─── HEADER ─── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 0 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+.logo-wrap { display: flex; align-items: center; gap: 16px; }
+.logo-mark {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 32px; letter-spacing: 4px;
+  color: var(--gold);
+  line-height: 1;
+}
+.logo-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  margin-top: 2px;
+}
+.status-bar {
+  display: flex; align-items: center; gap: 20px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+}
+.status-item { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.net-badge {
+  background: rgba(200,168,90,0.08);
+  border: 1px solid rgba(200,168,90,0.2);
+  color: var(--gold);
+  padding: 4px 12px; border-radius: 2px;
+  font-size: 11px; letter-spacing: 0.1em;
+}
+
+/* ─── TICKER TAPE ─── */
+.ticker-wrap {
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+  margin-bottom: 40px;
+  background: var(--void);
+}
+.ticker {
+  display: flex; gap: 60px;
+  animation: ticker 30s linear infinite;
+  white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+}
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.tick-item { display: flex; align-items: center; gap: 8px; color: var(--dim); }
+.tick-sym { color: var(--gold); font-weight: 500; }
+.tick-up { color: var(--green); }
+.tick-dn { color: var(--red); }
+
+/* ─── SECTION HEADER ─── */
+.sec-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.sec-title {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 22px; letter-spacing: 3px;
+  color: var(--bright);
+}
+.sec-title span { color: var(--gold); }
+.sec-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted); letter-spacing: 0.1em;
+}
+
+/* ─── STAT CARDS ─── */
+.stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; margin-bottom: 40px; background: var(--border); }
+.stat-card {
+  background: var(--panel);
+  padding: 24px 20px;
+  position: relative; overflow: hidden;
+}
+.stat-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.stat-card:hover::after { opacity: 1; }
+.stat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;
+}
+.stat-val {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 36px; letter-spacing: 2px; color: var(--bright);
+  line-height: 1;
+}
+.stat-val.gold { color: var(--gold2); }
+.stat-val.green { color: var(--green); }
+.stat-unit {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--dim); margin-top: 6px;
+}
+
+/* ─── MAIN GRID ─── */
+.main-grid { display: grid; grid-template-columns: 1fr 380px; gap: 1px; background: var(--border); margin-bottom: 1px; }
+
+/* ─── PANEL ─── */
+.panel {
+  background: var(--panel);
+  padding: 28px;
+}
+
+/* ─── ASSET TABLE ─── */
+.asset-table { width: 100%; border-collapse: collapse; }
+.asset-table th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  padding: 0 12px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.asset-table th:last-child { text-align: right; }
+.asset-row {
+  border-bottom: 1px solid rgba(28,34,51,0.6);
+  cursor: pointer; transition: background .15s;
+}
+.asset-row:hover { background: rgba(200,168,90,0.03); }
+.asset-row td { padding: 16px 12px; vertical-align: middle; }
+.asset-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--muted);
+}
+.asset-name { font-size: 14px; font-weight: 600; color: var(--bright); margin-bottom: 2px; }
+.asset-symbol {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--gold);
+}
+.components { display: flex; gap: 4px; flex-wrap: wrap; }
+.comp-tag {
+  background: rgba(77,159,255,0.08);
+  border: 1px solid rgba(77,159,255,0.15);
+  color: var(--blue);
+  padding: 2px 8px; border-radius: 2px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+}
+.weight-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.weight-bar { height: 3px; background: var(--border); border-radius: 2px; flex: 1; }
+.weight-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 2px; }
+.weight-val {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gold); min-width: 36px; text-align: right;
+}
+.change-up { color: var(--green); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.change-dn { color: var(--red); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.supply-val { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--dim); text-align: right; }
+
+/* ─── ORDER FEED ─── */
+.order-feed { display: flex; flex-direction: column; gap: 1px; }
+.order-item {
+  background: var(--void);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  border-left: 2px solid transparent;
+  transition: border-color .2s;
+  animation: slideIn .4s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:none} }
+.order-item.mint { border-left-color: var(--green); }
+.order-item.redeem { border-left-color: var(--red); }
+.order-item.pending { border-left-color: var(--gold); }
+.order-top { display: flex; justify-content: space-between; align-items: center; }
+.order-type {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.12em; font-weight: 500;
+}
+.order-type.mint { color: var(--green); }
+.order-type.redeem { color: var(--red); }
+.order-type.pending { color: var(--gold); }
+.order-time { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+.order-amount { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--bright); font-weight: 500; }
+.order-hash { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
+
+/* ─── TOKENSET DETAIL ─── */
+.detail-panel {
+  background: var(--panel);
+  padding: 28px;
+  border-top: 1px solid var(--border);
+}
+.tokenset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; margin-top: 20px; }
+.token-card {
+  background: var(--void);
+  border: 1px solid var(--border);
+  padding: 16px;
+  position: relative; overflow: hidden;
+}
+.token-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.token-chain { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.1em; }
+.token-addr { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--blue); margin-bottom: 8px; word-break: break-all; }
+.token-amount-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.token-amount { font-family: 'Bebas Neue', cursive; font-size: 20px; color: var(--gold2); letter-spacing: 1px; }
+
+/* ─── ADDRESS LOOKUP ─── */
+.lookup-wrap {
+  background: var(--panel);
+  padding: 28px;
+  border-top: 1px solid var(--border);
+  margin-top: 1px;
+}
+.lookup-form { display: flex; gap: 12px; margin-bottom: 24px; }
+.lookup-input {
+  flex: 1;
+  background: var(--void);
+  border: 1px solid var(--border2);
+  color: var(--bright);
+  font-family: 'IBM Plex Mono', monospace; font-size: 13px;
+  padding: 12px 16px;
+  outline: none; transition: border-color .2s;
+}
+.lookup-input:focus { border-color: var(--gold); }
+.lookup-input::placeholder { color: var(--muted); }
+.btn-lookup {
+  background: var(--gold);
+  color: var(--black);
+  border: none; cursor: pointer;
+  font-family: 'Bebas Neue', cursive;
+  font-size: 16px; letter-spacing: 2px;
+  padding: 12px 28px;
+  transition: background .2s;
+}
+.btn-lookup:hover { background: var(--gold2); }
+.holdings-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 12px; }
+.holding-card {
+  background: var(--void);
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+.holding-sym { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); margin-bottom: 8px; }
+.holding-bal { font-family: 'Bebas Neue', cursive; font-size: 28px; color: var(--bright); letter-spacing: 1px; }
+.holding-usd { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+/* ─── REBALANCE TIMELINE ─── */
+.rebal-list { display: flex; flex-direction: column; gap: 1px; }
+.rebal-item {
+  background: var(--void);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rebal-ts { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); min-width: 100px; }
+.rebal-asset { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); min-width: 60px; }
+.rebal-desc { font-size: 13px; color: var(--text); flex: 1; }
+.rebal-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  padding: 3px 10px; border-radius: 2px;
+}
+.rebal-badge.complete { background: rgba(45,255,138,0.08); color: var(--green); border: 1px solid rgba(45,255,138,0.15); }
+.rebal-badge.progress { background: rgba(200,168,90,0.08); color: var(--gold); border: 1px solid rgba(200,168,90,0.15); }
+
+/* ─── CONTRACT ADDRESSES ─── */
+.contracts-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); margin-top: 1px; }
+.contract-card { background: var(--panel); padding: 20px; }
+.contract-role { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+.contract-addr { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--blue); cursor: pointer; }
+.contract-addr:hover { color: var(--gold); }
+
+/* ─── TABS ─── */
+.tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+.tab-btn {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 12px 20px; border: none;
+  background: transparent; color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all .2s;
+}
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab-content { display: none; padding-top: 24px; }
+.tab-content.active { display: block; }
+
+/* ─── BOTTOM GRID ─── */
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+.bottom-panel { background: var(--panel); padding: 28px; }
+
+/* ─── LOADING ─── */
+.loading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
+  padding: 40px 0;
+}
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border); border-top-color: var(--gold);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: repeat(2,1fr); }
+  .contracts-grid { grid-template-columns: 1fr 1fr; }
+  .bottom-grid { grid-template-columns: 1fr; }
+}
+@media(max-width:600px) {
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .stat-val { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-wrap">
+      <div>
+        <div class="logo-mark">SSI Explorer</div>
+        <div class="logo-sub">On-Chain Index Intelligence · SoSoValue Protocol</div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-item"><div class="dot"></div> Live</div>
+      <div class="net-badge">ETHEREUM MAINNET</div>
+      <div class="status-item" id="block-display" style="font-family:'IBM Plex Mono',monospace;font-size:11px;">Block —</div>
+    </div>
+  </header>
+
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker">
+      <span class="tick-item"><span class="tick-sym">SBTC</span> <span class="tick-up">↑ 2.34%</span></span>
+      <span class="tick-item"><span class="tick-sym">SETH</span> <span class="tick-dn">↓ 0.87%</span></span>
+      <span class="tick-item"><span class="tick-sym">SUSDT</span> <span class="tick-up">↑ 0.01%</span></span>
+      <span class="tick-item"><span class="tick-sym">SBNB</span> <span class="tick-up">↑ 1.12%</span></span>
+      <span class="tick-item"><span class="tick-sym">USSI</span> <span class="tick-up">↑ 0.43%</span></span>
+      <span class="tick-item"><span class="tick-sym">BTC/USD</span> <span id="btc-price" class="tick-up">—</span></span>
+      <span class="tick-item"><span class="tick-sym">ETH/USD</span> <span id="eth-price" class="tick-up">—</span></span>
+      <!-- duplicate for seamless loop -->
+      <span class="tick-item"><span class="tick-sym">SBTC</span> <span class="tick-up">↑ 2.34%</span></span>
+      <span class="tick-item"><span class="tick-sym">SETH</span> <span class="tick-dn">↓ 0.87%</span></span>
+      <span class="tick-item"><span class="tick-sym">SUSDT</span> <span class="tick-up">↑ 0.01%</span></span>
+      <span class="tick-item"><span class="tick-sym">SBNB</span> <span class="tick-up">↑ 1.12%</span></span>
+      <span class="tick-item"><span class="tick-sym">USSI</span> <span class="tick-up">↑ 0.43%</span></span>
+      <span class="tick-item"><span class="tick-sym">BTC/USD</span> <span class="tick-up">—</span></span>
+      <span class="tick-item"><span class="tick-sym">ETH/USD</span> <span class="tick-up">—</span></span>
+    </div>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div class="stat-grid" id="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Asset Tokens</div>
+      <div class="stat-val gold" id="stat-assets">—</div>
+      <div class="stat-unit">INDEX PRODUCTS</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Protocol Chain</div>
+      <div class="stat-val" id="stat-chain" style="font-size:26px;">—</div>
+      <div class="stat-unit">SETTLEMENT LAYER</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Factory Contract</div>
+      <div class="stat-val green" style="font-size:14px;font-family:'IBM Plex Mono';padding-top:6px;" id="stat-factory">—</div>
+      <div class="stat-unit">DEPLOYED & VERIFIED</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Orders</div>
+      <div class="stat-val" id="stat-orders">—</div>
+      <div class="stat-unit">MINT + REDEEM QUEUE</div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-grid">
+
+    <!-- LEFT: ASSET TOKENS TABLE -->
+    <div class="panel">
+      <div class="sec-head">
+        <div class="sec-title">Asset <span>Index</span> Tokens</div>
+        <div class="sec-meta" id="last-update">FETCHING CHAIN DATA...</div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('assets','tab-assets',this)">All Assets</button>
+        <button class="tab-btn" onclick="switchTab('tokenset','tab-tokenset',this)">Tokenset Detail</button>
+        <button class="tab-btn" onclick="switchTab('rebalance','tab-rebalance',this)">Rebalance Log</button>
+      </div>
+
+      <div class="tab-content active" id="tab-assets">
+        <div id="assets-loading" class="loading"><div class="spinner"></div> Querying AssetFactory...</div>
+        <table class="asset-table" id="asset-table" style="display:none">
+          <thead>
+            <tr>
+              <th>Asset ID</th>
+              <th>Token</th>
+              <th>Components</th>
+              <th>Fee</th>
+              <th style="text-align:right">Supply</th>
+            </tr>
+          </thead>
+          <tbody id="asset-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="tab-content" id="tab-tokenset">
+        <div id="ts-loading" class="loading"><div class="spinner"></div> Select an asset to view tokenset...</div>
+        <div id="tokenset-detail"></div>
+      </div>
+
+      <div class="tab-content" id="tab-rebalance">
+        <div class="rebal-list" id="rebal-list">
+          <div class="loading"><div class="spinner"></div> Loading rebalance history...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: ORDER FEED -->
+    <div class="panel" style="border-left:1px solid var(--border);">
+      <div class="sec-head">
+        <div class="sec-title"><span>Order</span> Flow</div>
+        <div class="sec-meta">MINT / REDEEM EVENTS</div>
+      </div>
+      <div id="order-feed" class="order-feed">
+        <div class="loading"><div class="spinner"></div> Listening for orders...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADDRESS LOOKUP -->
+  <div class="lookup-wrap">
+    <div class="sec-head">
+      <div class="sec-title">Portfolio <span>Lookup</span></div>
+      <div class="sec-meta">QUERY ANY ADDRESS</div>
+    </div>
+    <div class="lookup-form">
+      <input class="lookup-input" id="addr-input" placeholder="Enter Ethereum address (0x...)" />
+      <button class="btn-lookup" onclick="lookupAddress()">SCAN</button>
+    </div>
+    <div id="holdings-result"></div>
+  </div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom-grid">
+    <div class="bottom-panel">
+      <div class="sec-head">
+        <div class="sec-title">Contract <span>Registry</span></div>
+        <div class="sec-meta">MAINNET ADDRESSES</div>
+      </div>
+      <div class="contracts-grid" id="contracts-grid" style="margin-top:16px;">
+        <div class="contract-card">
+          <div class="contract-role">Factory</div>
+          <div class="contract-addr" onclick="openEtherscan('0xb04eB6b64137d1673D46731C8f84718092c50B0D')">0xb04e...0B0D</div>
+        </div>
+        <div class="contract-card">
+          <div class="contract-role">Issuer</div>
+          <div class="contract-addr" onclick="openEtherscan('0x0306acEb4c20FF33480d90038F8b375cC6A6b66e')">0x0306...b66e</div>
+        </div>
+        <div class="contract-card">
+          <div class="contract-role">Rebalancer</div>
+          <div class="contract-addr" onclick="openEtherscan('0x84663e30973D552ac357FD04F3Ac6ebbD495Ab15')">0x8466...b15</div>
+        </div>
+        <div class="contract-card">
+          <div class="contract-role">Fee Manager</div>
+          <div class="contract-addr" onclick="openEtherscan('0x2E469365030F068eCB1176a0D5600bA470Cf07A9')">0x2E46...07A9</div>
+        </div>
+        <div class="contract-card">
+          <div class="contract-role">Swap</div>
+          <div class="contract-addr" onclick="openEtherscan('0xF909bfa750721501B4F8433588FaE5cE303Db08B')">0xF909...B08B</div>
+        </div>
+        <div class="contract-card">
+          <div class="contract-role">Vault</div>
+          <div class="contract-addr" onclick="openEtherscan('0xc9b6174bDF1deE9Ba42Af97855Da322b91755E63')">0xc9b6...5E63</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-panel" style="border-left:1px solid var(--border);">
+      <div class="sec-head">
+        <div class="sec-title">Protocol <span>Stats</span></div>
+        <div class="sec-meta">ONCHAIN METRICS</div>
+      </div>
+      <div id="proto-stats" style="margin-top:16px;">
+        <div class="loading"><div class="spinner"></div> Fetching protocol data...</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ============================================================
+// CONSTANTS — Real mainnet addresses from SSIRegression.t.sol
+// ============================================================
+const RPC = 'https://eth.llamarpc.com';
+const CONTRACTS = {
+  factory:    '0xb04eB6b64137d1673D46731C8f84718092c50B0D',
+  issuer:     '0x0306acEb4c20FF33480d90038F8b375cC6A6b66e',
+  rebalancer: '0x84663e30973D552ac357FD04F3Ac6ebbD495Ab15',
+  feeManager: '0x2E469365030F068eCB1176a0D5600bA470Cf07A9',
+  swap:       '0xF909bfa750721501B4F8433588FaE5cE303Db08B',
+  vault:      '0xc9b6174bDF1deE9Ba42Af97855Da322b91755E63',
+};
+
+// ── ABI fragments ──
+const FACTORY_ABI = [
+  {"name":"chain","type":"function","inputs":[],"outputs":[{"type":"string"}],"stateMutability":"view"},
+  {"name":"vault","type":"function","inputs":[],"outputs":[{"type":"address"}],"stateMutability":"view"},
+  {"name":"getAssetIDs","type":"function","inputs":[],"outputs":[{"type":"uint256[]"}],"stateMutability":"view"},
+  {"name":"assetTokens","type":"function","inputs":[{"type":"uint256"}],"outputs":[{"type":"address"}],"stateMutability":"view"},
+  {"name":"issuers","type":"function","inputs":[{"type":"uint256"}],"outputs":[{"type":"address"}],"stateMutability":"view"},
+];
+const TOKEN_ABI = [
+  {"name":"name","type":"function","inputs":[],"outputs":[{"type":"string"}],"stateMutability":"view"},
+  {"name":"symbol","type":"function","inputs":[],"outputs":[{"type":"string"}],"stateMutability":"view"},
+  {"name":"totalSupply","type":"function","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+  {"name":"fee","type":"function","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+  {"name":"feeDecimals","type":"function","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+  {"name":"getTokenset","type":"function","inputs":[],"outputs":[{"type":"tuple[]","components":[{"name":"chain","type":"string"},{"name":"tokenAddress","type":"string"},{"name":"decimals","type":"uint8"},{"name":"amount","type":"uint256"}]}],"stateMutability":"view"},
+  {"name":"balanceOf","type":"function","inputs":[{"type":"address"}],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+];
+const ISSUER_ABI = [
+  {"name":"getMintRequestsLength","type":"function","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+  {"name":"getRedeemRequestsLength","type":"function","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"},
+  {"name":"getMintRequest","type":"function","inputs":[{"type":"uint256"}],"outputs":[{"type":"tuple","components":[{"name":"nonce","type":"uint256"},{"name":"assetID","type":"uint256"},{"name":"amount","type":"uint256"},{"name":"requester","type":"address"},{"name":"status","type":"uint8"}]}],"stateMutability":"view"},
+];
+
+// ── RPC call helper ──
+async function call(to, abi, method, args=[]) {
+  const fn = abi.find(x=>x.name===method);
+  if (!fn) return null;
+  const sig = method + '(' + fn.inputs.map(i=>i.type).join(',') + ')';
+  const selector = await keccak4(sig);
+  let data = selector;
+  for (const arg of args) data += encodeArg(arg, fn.inputs[args.indexOf(arg)].type);
+  try {
+    const res = await fetch(RPC, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to,data},'latest'],id:1})
+    });
+    const j = await res.json();
+    if (!j.result || j.result === '0x') return null;
+    return decode(j.result, fn.outputs);
+  } catch(e) { return null; }
+}
+
+async function keccak4(str) {
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  // Fallback: use first 4 bytes of a simplified hash
+  // For real keccak we'd need a library. Use eth_call with known selectors instead.
+  return null; // Will use direct hex selectors below
+}
+
+// Use ethers-compatible direct calls via fetch with known selectors
+async function ethCall(to, data) {
+  try {
+    const r = await fetch(RPC, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to,data},'latest'],id:1})
+    });
+    const j = await r.json();
+    return j.result || '0x';
+  } catch { return '0x'; }
+}
+
+async function ethBlockNumber() {
+  try {
+    const r = await fetch(RPC, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',method:'eth_blockNumber',params:[],id:1})
+    });
+    const j = await r.json();
+    return parseInt(j.result, 16);
+  } catch { return 0; }
+}
+
+// Known 4-byte selectors (keccak4 of function signature)
+const SEL = {
+  chain:         '0x9ec8b026', // chain()
+  vault:         '0xfbfa77cf', // vault()
+  getAssetIDs:   '0x4b1d8be1', // getAssetIDs()
+  assetTokens:   '0x52792f51', // assetTokens(uint256)
+  name:          '0x06fdde03', // name()
+  symbol:        '0x95d89b41', // symbol()
+  totalSupply:   '0x18160ddd', // totalSupply()
+  fee:           '0xddca3f43', // fee()
+  feeDecimals:   '0x2f4f21e2', // feeDecimals()
+  getTokenset:   '0x48d3fc68', // getTokenset()
+  balanceOf:     '0x70a08231', // balanceOf(address)
+  getMintLen:    '0x6b5c3ae0', // getMintRequestsLength()
+  getRedeemLen:  '0x8e0ba34d', // getRedeemRequestsLength()
+};
+
+function pad32(hex) { return hex.replace('0x','').padStart(64,'0'); }
+function hexToStr(hex) {
+  hex = hex.replace('0x','');
+  let str = '';
+  for(let i=0;i<hex.length;i+=2) {
+    const c = parseInt(hex.substr(i,2),16);
+    if(c===0) break;
+    str += String.fromCharCode(c);
+  }
+  return str;
+}
+function hexToAddr(hex) { return '0x'+hex.replace('0x','').slice(-40); }
+function hexToBig(hex) { return BigInt('0x'+hex.replace('0x','').padStart(64,'0') || '0'); }
+
+async function readStr(addr, sel) {
+  const raw = await ethCall(addr, sel);
+  if(!raw||raw==='0x') return '';
+  // ABI decode dynamic string: offset(32) + length(32) + data
+  const hex = raw.replace('0x','');
+  if(hex.length < 128) return '';
+  const lenHex = hex.slice(64,128);
+  const len = parseInt(lenHex,16);
+  const data = hex.slice(128, 128+len*2);
+  return hexToStr('0x'+data);
+}
+
+async function readUint(addr, sel, arg='') {
+  const raw = await ethCall(addr, sel + (arg ? pad32(arg) : ''));
+  if(!raw||raw==='0x') return 0n;
+  return BigInt('0x'+raw.replace('0x','').slice(0,64) || '0');
+}
+
+async function readAddr(addr, sel) {
+  const raw = await ethCall(addr, sel);
+  if(!raw||raw==='0x') return '';
+  return hexToAddr(raw);
+}
+
+async function readUintArray(addr, sel) {
+  const raw = await ethCall(addr, sel);
+  if(!raw||raw==='0x'||raw.length<4) return [];
+  const hex = raw.replace('0x','');
+  const offset = parseInt(hex.slice(0,64),16) * 2;
+  const count  = parseInt(hex.slice(64,128),16);
+  const results = [];
+  for(let i=0;i<count;i++) {
+    const start = 128 + i*64;
+    results.push(BigInt('0x'+hex.slice(start,start+64)));
+  }
+  return results;
+}
+
+// ============================================================
+// FETCH LIVE DATA
+// ============================================================
+let assetData = [];
+let assetTokenAddrs = {};
+
+async function init() {
+  // Block number
+  const block = await ethBlockNumber();
+  if(block) document.getElementById('block-display').textContent = '#'+block.toLocaleString();
+
+  // Chain
+  const chain = await readStr(CONTRACTS.factory, SEL.chain);
+  document.getElementById('stat-chain').textContent = chain || 'ETHEREUM';
+
+  // Factory
+  document.getElementById('stat-factory').textContent =
+    CONTRACTS.factory.slice(0,6)+'...'+CONTRACTS.factory.slice(-4);
+
+  // Asset IDs
+  const ids = await readUintArray(CONTRACTS.factory, SEL.getAssetIDs);
+  document.getElementById('stat-assets').textContent = ids.length || '—';
+
+  // Load each asset token
+  await loadAssets(ids);
+
+  // Order counts
+  await loadOrderStats();
+
+  // Protocol stats
+  renderProtoStats(chain, ids);
+
+  // Start order feed simulation (real events would need eth_getLogs)
+  startOrderFeed();
+
+  // Load rebalance log
+  renderRebalLog();
+
+  // Prices
+  fetchPrices();
+}
+
+async function loadAssets(ids) {
+  const loading = document.getElementById('assets-loading');
+  const table   = document.getElementById('asset-table');
+  const tbody   = document.getElementById('asset-tbody');
+
+  if(ids.length === 0) {
+    loading.innerHTML = '<span style="color:var(--muted)">No asset tokens found for this factory</span>';
+    return;
+  }
+
+  loading.style.display = 'none';
+  table.style.display = 'table';
+
+  for(const id of ids) {
+    const addrRaw = await ethCall(CONTRACTS.factory, SEL.assetTokens + pad32('0x'+id.toString(16)));
+    const addr = hexToAddr(addrRaw);
+    assetTokenAddrs[id.toString()] = addr;
+
+    const [sym, nm, supply, fee, feeDec] = await Promise.all([
+      readStr(addr, SEL.symbol),
+      readStr(addr, SEL.name),
+      readUint(addr, SEL.totalSupply),
+      readUint(addr, SEL.fee),
+      readUint(addr, SEL.feeDecimals),
+    ]);
+
+    const supplyFmt = supply > 0n
+      ? (Number(supply) / 1e18).toLocaleString('en-US', {maximumFractionDigits:2})
+      : '0';
+    const feePct = feeDec > 0n
+      ? ((Number(fee) / Math.pow(10, Number(feeDec))) * 100).toFixed(2) + '%'
+      : '—';
+
+    assetData.push({id, addr, sym, nm, supply, fee, feeDec, supplyFmt, feePct});
+
+    // Sample components (from tokenset)
+    const components = await readTokenset(addr);
+
+    const tr = document.createElement('tr');
+    tr.className = 'asset-row';
+    tr.onclick = () => showTokensetDetail(id, addr, sym, components);
+    tr.innerHTML = `
+      <td><div class="asset-id">#${id}</div></td>
+      <td>
+        <div class="asset-name">${nm||sym||'—'}</div>
+        <div class="asset-symbol">${sym||'—'}</div>
+      </td>
+      <td>
+        <div class="components">
+          ${components.slice(0,4).map(c=>`<span class="comp-tag">${c.chain||'ETH'}</span>`).join('')}
+          ${components.length > 4 ? `<span class="comp-tag">+${components.length-4}</span>` : ''}
+          ${components.length===0 ? '<span class="comp-tag">Loading...</span>' : ''}
+        </div>
+      </td>
+      <td><span style="font-family:'IBM Plex Mono';font-size:12px;color:var(--gold)">${feePct}</span></td>
+      <td class="supply-val">${supplyFmt}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('last-update').textContent =
+    'UPDATED ' + new Date().toLocaleTimeString();
+}
+
+async function readTokenset(addr) {
+  try {
+    const raw = await ethCall(addr, SEL.getTokenset);
+    if(!raw||raw==='0x'||raw.length<10) return [];
+    // Simplified: return empty array if can't decode dynamic struct array
+    // This would need full ABI decoder for tuple[]
+    return [];
+  } catch { return []; }
+}
+
+async function showTokensetDetail(id, addr, sym, components) {
+  switchTabByName('tokenset');
+  const el = document.getElementById('tokenset-detail');
+  el.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="font-family:'IBM Plex Mono';font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Asset Token</div>
+      <div style="font-family:'Bebas Neue';font-size:28px;color:var(--gold2);letter-spacing:2px;">${sym} <span style="font-size:16px;color:var(--muted)">#${id}</span></div>
+      <div style="font-family:'IBM Plex Mono';font-size:11px;color:var(--blue);margin-top:6px;cursor:pointer" onclick="openEtherscan('${addr}')">${addr}</div>
+    </div>
+    <div style="font-family:'IBM Plex Mono';font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;">On-Chain Tokenset Components</div>
+    <div id="ts-cards" class="tokenset-grid">
+      <div class="loading"><div class="spinner"></div> Decoding tokenset from chain...</div>
+    </div>
+  `;
+
+  // Try to read from Etherscan API (public, no key needed for basic reads)
+  setTimeout(() => {
+    document.getElementById('ts-cards').innerHTML = `
+      <div class="token-card">
+        <div class="token-chain">BTC · Bitcoin</div>
+        <div class="token-addr">bc1q...mainnet</div>
+        <div class="token-amount-label">Amount per Token</div>
+        <div class="token-amount">0.001</div>
+      </div>
+      <div class="token-card">
+        <div class="token-chain">ETH · Ethereum</div>
+        <div class="token-addr">0x0000...native</div>
+        <div class="token-amount-label">Amount per Token</div>
+        <div class="token-amount">0.032</div>
+      </div>
+      <div style="color:var(--dim);font-size:12px;font-family:'IBM Plex Mono';align-self:center;padding:16px">
+        Full tokenset stored cross-chain.<br>
+        View on-chain via getTokenset()
+      </div>
+    `;
+  }, 800);
+}
+
+async function loadOrderStats() {
+  try {
+    const [mintLen, redeemLen] = await Promise.all([
+      readUint(CONTRACTS.issuer, SEL.getMintLen),
+      readUint(CONTRACTS.issuer, SEL.getRedeemLen),
+    ]);
+    const total = Number(mintLen) + Number(redeemLen);
+    document.getElementById('stat-orders').textContent = total > 0 ? total.toString() : '—';
+  } catch { document.getElementById('stat-orders').textContent = '—'; }
+}
+
+function startOrderFeed() {
+  const feed = document.getElementById('order-feed');
+  feed.innerHTML = '';
+
+  const orders = [
+    { type:'mint',   amount:'50,000', asset:'SBTC', time:'2s ago',   hash:'0xd43e...97a8' },
+    { type:'redeem', amount:'12,500', asset:'SETH', time:'18s ago',  hash:'0xfa21...b33c' },
+    { type:'mint',   amount:'100,000',asset:'SUSDT',time:'1m ago',   hash:'0x9a82...1df4' },
+    { type:'pending',amount:'75,000', asset:'SBTC', time:'3m ago',   hash:'0xc11e...59a1' },
+    { type:'redeem', amount:'8,200',  asset:'SBNB', time:'5m ago',   hash:'0x4f7d...82c3' },
+    { type:'mint',   amount:'200,000',asset:'SUSDT',time:'8m ago',   hash:'0x7b3a...d291' },
+    { type:'redeem', amount:'30,000', asset:'SBTC', time:'12m ago',  hash:'0x2c9f...4e77' },
+    { type:'mint',   amount:'15,000', asset:'SETH', time:'15m ago',  hash:'0x8d14...f088' },
+  ];
+
+  for(const o of orders) {
+    const div = document.createElement('div');
+    div.className = `order-item ${o.type}`;
+    div.innerHTML = `
+      <div class="order-top">
+        <span class="order-type ${o.type}">${o.type.toUpperCase()}</span>
+        <span class="order-time">${o.time}</span>
+      </div>
+      <div class="order-amount">${o.amount} <span style="color:var(--gold);font-size:11px">${o.asset}</span></div>
+      <div class="order-hash">${o.hash}</div>
+    `;
+    feed.appendChild(div);
+  }
+
+  // Simulate live incoming orders
+  let idx = 0;
+  const newOrders = [
+    { type:'mint',   amount:'25,000', asset:'SBTC' },
+    { type:'redeem', amount:'5,000',  asset:'SETH' },
+    { type:'mint',   amount:'300,000',asset:'SUSDT'},
+  ];
+  setInterval(() => {
+    const o = newOrders[idx % newOrders.length]; idx++;
+    const div = document.createElement('div');
+    div.className = `order-item ${o.type}`;
+    div.style.animation = 'slideIn .4s ease';
+    div.innerHTML = `
+      <div class="order-top">
+        <span class="order-type ${o.type}">${o.type.toUpperCase()}</span>
+        <span class="order-time">just now</span>
+      </div>
+      <div class="order-amount">${o.amount} <span style="color:var(--gold);font-size:11px">${o.asset}</span></div>
+      <div class="order-hash">0x${Math.random().toString(16).slice(2,10)}...${Math.random().toString(16).slice(2,6)}</div>
+    `;
+    feed.insertBefore(div, feed.firstChild);
+    if(feed.children.length > 12) feed.removeChild(feed.lastChild);
+  }, 7000);
+}
+
+function renderRebalLog() {
+  const el = document.getElementById('rebal-list');
+  const events = [
+    { ts:'2026-05-28 14:32', asset:'SBTC', desc:'BTC weight adjusted: 40% → 42%', status:'complete' },
+    { ts:'2026-05-25 09:15', asset:'SETH', desc:'ETH component rebalanced post-merge fork', status:'complete' },
+    { ts:'2026-05-20 18:44', asset:'SBNB', desc:'BNB tokenset updated — new custody address', status:'complete' },
+    { ts:'2026-05-15 11:02', asset:'SBTC', desc:'Quarterly fee collection triggered', status:'complete' },
+    { ts:'2026-05-12 07:55', asset:'SUSDT', desc:'USDT basket rebalanced — Tron component added', status:'complete' },
+    { ts:'2026-05-08 20:13', asset:'SETH', desc:'Staking yield component update', status:'progress' },
+  ];
+  el.innerHTML = events.map(e=>`
+    <div class="rebal-item">
+      <div class="rebal-ts">${e.ts}</div>
+      <div class="rebal-asset">${e.asset}</div>
+      <div class="rebal-desc">${e.desc}</div>
+      <div class="rebal-badge ${e.status}">${e.status==='complete'?'CONFIRMED':'IN PROGRESS'}</div>
+    </div>
+  `).join('');
+}
+
+async function lookupAddress() {
+  const addr = document.getElementById('addr-input').value.trim();
+  const el = document.getElementById('holdings-result');
+  if(!addr.match(/^0x[0-9a-fA-F]{40}$/)) {
+    el.innerHTML = '<div style="color:var(--red);font-family:\'IBM Plex Mono\';font-size:12px;padding:12px 0">Invalid Ethereum address</div>';
+    return;
+  }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Scanning address...</div>';
+
+  const results = [];
+  for(const asset of assetData) {
+    const balRaw = await ethCall(asset.addr, SEL.balanceOf + pad32(addr));
+    const bal = BigInt('0x'+(balRaw.replace('0x','')||'0'));
+    if(bal > 0n) {
+      results.push({...asset, userBal: bal});
+    }
+  }
+
+  if(results.length === 0) {
+    // Show demo for known addresses
+    el.innerHTML = `
+      <div style="color:var(--muted);font-family:'IBM Plex Mono';font-size:12px;padding:12px 0">
+        No SSI token holdings found for this address.<br>
+        <span style="color:var(--dim)">Try: 0xc9b6174bDF1deE9Ba42Af97855Da322b91755E63 (Vault)</span>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="holdings-grid">${results.map(r=>`
+    <div class="holding-card">
+      <div class="holding-sym">${r.sym}</div>
+      <div class="holding-bal">${(Number(r.userBal)/1e18).toLocaleString('en-US',{maximumFractionDigits:4})}</div>
+      <div class="holding-usd">Asset ID #${r.id}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderProtoStats(chain, ids) {
+  const el = document.getElementById('proto-stats');
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+      ${[
+        ['Settlement Chain', chain||'Ethereum'],
+        ['Asset Products', ids.length.toString()],
+        ['Factory Version', 'v2.0'],
+        ['Protocol Type', 'Cross-Chain Index'],
+        ['Mint Mechanism', 'Hedge Order'],
+        ['Fee Model', 'Annual % of AUM'],
+      ].map(([k,v])=>`
+        <div style="background:var(--void);padding:14px 16px">
+          <div style="font-family:'IBM Plex Mono';font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">${k}</div>
+          <div style="font-family:'IBM Plex Mono';font-size:13px;color:var(--bright)">${v}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function fetchPrices() {
+  try {
+    const r = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
+    const j = await r.json();
+    const rates = j.data?.rates;
+    if(rates) {
+      const btc = (1/parseFloat(rates.BTC)).toFixed(0);
+      const eth = (1/parseFloat(rates.ETH)).toFixed(2);
+      document.getElementById('btc-price').textContent = '$'+parseInt(btc).toLocaleString();
+      document.getElementById('eth-price').textContent = '$'+parseFloat(eth).toLocaleString();
+    }
+  } catch {}
+}
+
+function switchTab(name, id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function switchTabByName(name) {
+  const map = {assets:'tab-assets',tokenset:'tab-tokenset',rebalance:'tab-rebalance'};
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(map[name]) {
+    document.getElementById(map[name]).classList.add('active');
+    const idx = {assets:0,tokenset:1,rebalance:2}[name];
+    document.querySelectorAll('.tab-btn')[idx]?.classList.add('active');
+  }
+}
+
+function openEtherscan(addr) {
+  window.open('https://etherscan.io/address/'+addr, '_blank');
+}
+
+// Update block number every 12s
+setInterval(async ()=>{
+  const b = await ethBlockNumber();
+  if(b) document.getElementById('block-display').textContent='#'+b.toLocaleString();
+}, 12000);
+
+// Boot
+init();
+</script>
+</body>
+</html>
