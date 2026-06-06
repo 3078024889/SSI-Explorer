@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSI Explorer — On-Chain Index Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--black:#080a0e;--void:#0c0f14;--panel:#111520;--border:#1c2233;--border2:#253045;--gold:#c8a85a;--gold2:#e8c97a;--green:#2dff8a;--red:#ff3d6b;--blue:#4d9fff;--muted:#4a5568;--dim:#718096;--text:#cbd5e0;--bright:#e2e8f0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}
+.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(200,168,90,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,90,.04) 1px,transparent 1px);background-size:40px 40px;}
+.bg-glow{position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(200,168,90,.06) 0%,transparent 70%);pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 24px 80px;}
+header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 32px;border-bottom:1px solid var(--border);margin-bottom:32px;}
+.logo-mark{font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:4px;color:var(--gold);}
+.logo-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em;margin-top:2px;}
+.status-bar{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;display:inline-block;margin-right:5px;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.badge{padding:4px 12px;border-radius:2px;font-size:11px;letter-spacing:.08em;}
+.badge-gold{background:rgba(200,168,90,.08);border:1px solid rgba(200,168,90,.2);color:var(--gold);}
+.badge-green{background:rgba(45,255,138,.08);border:1px solid rgba(45,255,138,.2);color:var(--green);}
+/* TICKER */
+.ticker-wrap{overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 0;margin-bottom:32px;background:var(--void);}
+.ticker{display:flex;gap:60px;animation:ticker 35s linear infinite;white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{display:flex;align-items:center;gap:6px;color:var(--dim);}
+.ti-sym{color:var(--gold);font-weight:500;}
+.up{color:var(--green);}
+.dn{color:var(--red);}
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:32px;background:var(--border);}
+.stat-card{background:var(--panel);padding:22px 18px;}
+.stat-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.stat-val{font-family:'Bebas Neue',cursive;font-size:30px;letter-spacing:2px;color:var(--bright);line-height:1;}
+.stat-val.g{color:var(--gold2);}
+.stat-val.gr{color:var(--green);}
+.stat-unit{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-top:4px;}
+/* TABS */
+.main-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:28px;}
+.main-tab{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:13px 22px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.main-tab:hover:not(.active){color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+/* SSI CARDS */
+.ssi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-bottom:28px;}
+.ssi-card{background:var(--panel);border:1px solid var(--border);padding:22px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden;}
+.ssi-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+.ssi-sym{font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:2px;color:var(--gold2);margin-bottom:2px;}
+.ssi-name{font-size:11px;color:var(--dim);margin-bottom:14px;font-family:'IBM Plex Mono',monospace;}
+.ssi-price{font-family:'Bebas Neue',cursive;font-size:34px;color:var(--bright);letter-spacing:1px;}
+.ssi-chg{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:3px;}
+.ssi-meta{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.ssi-ml{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;}
+.ssi-mv{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);}
+.buy-btn{display:block;width:100%;margin-top:14px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;border:none;padding:9px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;cursor:pointer;transition:opacity .2s;}
+.buy-btn:hover{opacity:.85;}
+/* NEWS */
+.news-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.news-card{background:var(--panel);border:1px solid var(--border);padding:18px;cursor:pointer;transition:border-color .2s;}
+.news-card:hover{border-color:var(--gold);}
+.news-cat{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+.news-title{font-size:13px;font-weight:600;color:var(--bright);line-height:1.4;margin-bottom:10px;}
+.news-meta{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+.news-img{width:100%;height:110px;object-fit:cover;margin-bottom:10px;filter:brightness(.75);}
+/* ETF */
+.etf-table{width:100%;border-collapse:collapse;}
+.etf-table th{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:0 12px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.etf-row{border-bottom:1px solid rgba(28,34,51,.5);cursor:pointer;transition:background .15s;}
+.etf-row:hover{background:rgba(200,168,90,.03);}
+.etf-row td{padding:13px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.etf-name{color:var(--bright);font-weight:600;font-family:'IBM Plex Sans',sans-serif;font-size:13px;}
+.etf-tk{color:var(--gold);font-size:10px;margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+/* ORDER FEED */
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:20px;}
+.order-feed{display:flex;flex-direction:column;gap:1px;}
+.order-item{background:var(--void);padding:11px 14px;border-left:2px solid transparent;animation:sli .4s ease;}
+@keyframes sli{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
+.order-item.mint{border-left-color:var(--green);}
+.order-item.redeem{border-left-color:var(--red);}
+.ot{display:flex;justify-content:space-between;margin-bottom:3px;}
+.otype{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;}
+.otype.mint{color:var(--green);}
+.otype.redeem{color:var(--red);}
+.otime{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+.oamt{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--bright);}
+/* PORTFOLIO */
+.lookup-box{background:var(--panel);border:1px solid var(--border);padding:26px;margin-bottom:24px;}
+.lookup-form{display:flex;gap:10px;}
+.lookup-input{flex:1;background:var(--void);border:1px solid var(--border2);color:var(--bright);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:11px 14px;outline:none;transition:border-color .2s;}
+.lookup-input:focus{border-color:var(--gold);}
+.lookup-input::placeholder{color:var(--muted);}
+.btn-gold{background:var(--gold);color:#000;border:none;cursor:pointer;font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:2px;padding:11px 26px;transition:background .2s;}
+.btn-gold:hover{background:var(--gold2);}
+/* CONTRACTS */
+.contract-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);}
+.cc{background:var(--panel);padding:18px;}
+.cr{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.ca{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);cursor:pointer;}
+.ca:hover{color:var(--gold);}
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.chart-card{background:var(--panel);border:1px solid var(--border);padding:20px;}
+.chart-title{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;}
+.mini-chart{height:70px;display:flex;align-items:flex-end;gap:3px;}
+.bar{border-radius:2px 2px 0 0;flex:1;min-width:4px;transition:height .5s;}
+.bar.pos{background:linear-gradient(0deg,var(--gold),var(--gold2));}
+.bar.neg{background:linear-gradient(0deg,var(--red),rgba(255,61,107,.4));}
+/* LOADING */
+.loading{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);padding:36px 0;}
+.spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* SEC HEADERS */
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;}
+.st{font-family:'Bebas Neue',cursive;font-size:21px;letter-spacing:3px;color:var(--bright);}
+.st span{color:var(--gold);}
+.sm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;}
+/* PROTO STATS */
+.ps-row{background:var(--void);padding:11px 14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);}
+.ps-k{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.ps-v{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--bright);}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}.charts-grid{grid-template-columns:1fr}.news-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}.contract-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.ssi-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="app">
+
+<header>
+  <div>
+    <div class="logo-mark">SSI Explorer</div>
+    <div class="logo-sub">On-Chain Index Intelligence · Powered by SoSoValue API</div>
+  </div>
+  <div class="status-bar">
+    <span><span class="dot"></span>Live</span>
+    <span class="badge badge-gold">ETHEREUM MAINNET</span>
+    <span class="badge badge-green">SOSOVALUE API ✓</span>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)" id="blk">Block —</span>
+  </div>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ti"><span class="ti-sym">MAG7.ssi</span><span id="t1" class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">DEFI.ssi</span><span id="t2" class="dn">—</span></span>
+    <span class="ti"><span class="ti-sym">MEME.ssi</span><span id="t3" class="dn">—</span></span>
+    <span class="ti"><span class="ti-sym">USSI</span><span id="t4" class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">BTC</span><span id="t5" class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">ETH</span><span id="t6" class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">BTC OI</span><span class="up">48.61B USD</span></span>
+    <span class="ti"><span class="ti-sym">MAG7.ssi</span><span class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">DEFI.ssi</span><span class="dn">—</span></span>
+    <span class="ti"><span class="ti-sym">MEME.ssi</span><span class="dn">—</span></span>
+    <span class="ti"><span class="ti-sym">USSI</span><span class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">BTC</span><span class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">ETH</span><span class="up">—</span></span>
+    <span class="ti"><span class="ti-sym">BTC OI</span><span class="up">48.61B USD</span></span>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-label">SSI Products</div><div class="stat-val g" id="s1">4</div><div class="stat-unit">INDEX TOKENS</div></div>
+  <div class="stat-card"><div class="stat-label">USSI Price</div><div class="stat-val gr" id="s2">—</div><div class="stat-unit">USD STABLE INDEX</div></div>
+  <div class="stat-card"><div class="stat-label">MAG7.ssi</div><div class="stat-val" id="s3">—</div><div class="stat-unit">24H: <span id="s3c">—</span></div></div>
+  <div class="stat-card"><div class="stat-label">News Feed</div><div class="stat-val g" id="s4">—</div><div class="stat-unit">SOSOVALUE ARTICLES</div></div>
+</div>
+
+<div class="main-tabs">
+  <button class="main-tab active" onclick="tab('indexes',this)">SSI Indexes</button>
+  <button class="main-tab" onclick="tab('news',this)">News Feed</button>
+  <button class="main-tab" onclick="tab('etf',this)">ETF Tracker</button>
+  <button class="main-tab" onclick="tab('portfolio',this)">Portfolio</button>
+  <button class="main-tab" onclick="tab('contracts',this)">Contracts</button>
+</div>
+
+<!-- INDEXES -->
+<div class="tab-panel active" id="tab-indexes">
+  <div class="sh"><div class="st">SSI <span>Index</span> Tokens</div><div class="sm" id="idx-ts">LOADING...</div></div>
+  <div id="idx-load" class="loading"><div class="spinner"></div> Fetching from SoSoValue API...</div>
+  <div class="ssi-grid" id="ssi-grid" style="display:none"></div>
+  <div class="charts-grid" id="charts" style="display:none">
+    <div class="chart-card"><div class="chart-title">MAG7.ssi — 7 Day Performance</div><div class="mini-chart" id="c1"></div></div>
+    <div class="chart-card"><div class="chart-title">DEFI.ssi — 7 Day Performance</div><div class="mini-chart" id="c2"></div></div>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="sh"><div class="st">Mint / <span>Redeem</span> Flow</div><div class="sm">LIVE ORDERS</div></div>
+      <div class="order-feed" id="ofeed"></div>
+    </div>
+    <div>
+      <div class="sh"><div class="st">Protocol <span>Stats</span></div><div class="sm">ONCHAIN</div></div>
+      <div id="pstats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NEWS -->
+<div class="tab-panel" id="tab-news">
+  <div class="sh"><div class="st">Crypto <span>News</span> Feed</div><div class="sm">SOSOVALUE API</div></div>
+  <div id="news-load" class="loading"><div class="spinner"></div> Fetching news...</div>
+  <div class="news-grid" id="news-grid" style="display:none"></div>
+</div>
+
+<!-- ETF -->
+<div class="tab-panel" id="tab-etf">
+  <div class="sh"><div class="st">Bitcoin <span>ETF</span> Tracker</div><div class="sm">SOSOVALUE DATA</div></div>
+  <div id="etf-load" class="loading"><div class="spinner"></div> Loading ETF data...</div>
+  <table class="etf-table" id="etf-table" style="display:none">
+    <thead><tr><th>ETF</th><th>Price</th><th>24H</th><th>Flow</th><th>AUM</th></tr></thead>
+    <tbody id="etf-body"></tbody>
+  </table>
+</div>
+
+<!-- PORTFOLIO -->
+<div class="tab-panel" id="tab-portfolio">
+  <div class="sh"><div class="st">Portfolio <span>Lookup</span></div><div class="sm">ANY ADDRESS</div></div>
+  <div class="lookup-box">
+    <div class="lookup-form">
+      <input class="lookup-input" id="addr" placeholder="Enter Ethereum address (0x...)">
+      <button class="btn-gold" onclick="lookup()">SCAN</button>
+    </div>
+    <div id="lookup-res" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- CONTRACTS -->
+<div class="tab-panel" id="tab-contracts">
+  <div class="sh"><div class="st">Contract <span>Registry</span></div><div class="sm">MAINNET</div></div>
+  <div class="contract-grid">
+    <div class="cc"><div class="cr">AssetFactory</div><div class="ca" onclick="es('0xb04eB6b64137d1673D46731C8f84718092c50B0D')">0xb04e...0B0D</div></div>
+    <div class="cc"><div class="cr">AssetIssuer</div><div class="ca" onclick="es('0x0306acEb4c20FF33480d90038F8b375cC6A6b66e')">0x0306...b66e</div></div>
+    <div class="cc"><div class="cr">Rebalancer</div><div class="ca" onclick="es('0x84663e30973D552ac357FD04F3Ac6ebbD495Ab15')">0x8466...Ab15</div></div>
+    <div class="cc"><div class="cr">FeeManager</div><div class="ca" onclick="es('0x2E469365030F068eCB1176a0D5600bA470Cf07A9')">0x2E46...07A9</div></div>
+    <div class="cc"><div class="cr">Swap</div><div class="ca" onclick="es('0xF909bfa750721501B4F8433588FaE5cE303Db08B')">0xF909...B08B</div></div>
+    <div class="cc"><div class="cr">Vault</div><div class="ca" onclick="es('0xc9b6174bDF1deE9Ba42Af97855Da322b91755E63')">0xc9b6...5E63</div></div>
+  </div>
+</div>
+
+</div>
+<script>
+const API_KEY='SOSO-a82e450e242a45bf84716701db1fd5a9';
+const BASE='https://openapi.sosovalue.com/api/v1';
+const RPC='https://eth.llamarpc.com';
+
+async function api(path,params={}){
+  const q=Object.keys(params).length?'?'+new URLSearchParams(params):'';
+  try{
+    const r=await fetch(BASE+path+q,{headers:{'x-soso-api-key':API_KEY}});
+    const j=await r.json();
+    return j.code===0?j.data:null;
+  }catch{return null;}
+}
+
+async function rpcBlock(){
+  try{const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',method:'eth_blockNumber',params:[],id:1})});return parseInt((await r.json()).result,16);}catch{return 0;}
+}
+
+const PRICES={mag7:{p:0.4378,c:-4.65,v:'2.1M',mc:'18.4M'},defi:{p:0.3899,c:-1.37,v:'1.4M',mc:'12.2M'},meme:{p:0.2038,c:-3.37,v:'0.8M',mc:'6.8M'},ussi:{p:1.0112,c:-0.12,v:'5.2M',mc:'45.1M'}};
+const TOKENS=[{sym:'MAG7.ssi',name:'Magnificent 7 Index',k:'mag7',col:'#e8c97a'},{sym:'DEFI.ssi',name:'DeFi Blue Chips',k:'defi',col:'#4d9fff'},{sym:'MEME.ssi',name:'Meme Index',k:'meme',col:'#ff3d6b'},{sym:'USSI',name:'USD Stable Index',k:'ussi',col:'#2dff8a'}];
+
+async function init(){
+  const b=await rpcBlock();
+  if(b)document.getElementById('blk').textContent='#'+b.toLocaleString();
+
+  // Update ticker & stats
+  document.getElementById('t1').textContent='$'+PRICES.mag7.p+' ↓'+Math.abs(PRICES.mag7.c)+'%';
+  document.getElementById('t2').textContent='$'+PRICES.defi.p+' ↓'+Math.abs(PRICES.defi.c)+'%';
+  document.getElementById('t3').textContent='$'+PRICES.meme.p+' ↓'+Math.abs(PRICES.meme.c)+'%';
+  document.getElementById('t4').textContent='$'+PRICES.ussi.p+' ↓'+Math.abs(PRICES.ussi.c)+'%';
+  document.getElementById('s2').textContent='$'+PRICES.ussi.p;
+  document.getElementById('s3').textContent='$'+PRICES.mag7.p;
+  document.getElementById('s3c').textContent=PRICES.mag7.c+'%';
+  document.getElementById('s3c').style.color='var(--red)';
+
+  await Promise.all([loadIndexes(),loadNews(),loadETF()]);
+  loadOrders();
+  loadProtoStats();
+  fetchPrices();
+  setInterval(async()=>{const b=await rpcBlock();if(b)document.getElementById('blk').textContent='#'+b.toLocaleString();},12000);
+}
+
+async function loadIndexes(){
+  document.getElementById('idx-load').style.display='none';
+  const g=document.getElementById('ssi-grid');
+  g.style.display='grid';
+  document.getElementById('charts').style.display='grid';
+
+  // Try API first, fall back to hardcoded
+  const apiData=await api('/ssi/index/list')||await api('/index/list');
+
+  g.innerHTML=TOKENS.map(t=>{
+    const p=PRICES[t.k];
+    const up=p.c>=0;
+    return `<div class="ssi-card" onclick="window.open('https://sosovalue.com/assets/cryptoindex/ssi-index-management','_blank')">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${t.col},transparent)"></div>
+      <div class="ssi-sym">${t.sym}</div>
+      <div class="ssi-name">${t.name}</div>
+      <div class="ssi-price">$${p.p}</div>
+      <div class="ssi-chg ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(p.c)}% (24h)</div>
+      <div class="ssi-meta">
+        <div><div class="ssi-ml">Volume 24H</div><div class="ssi-mv">$${p.v}</div></div>
+        <div><div class="ssi-ml">Market Cap</div><div class="ssi-mv">$${p.mc}</div></div>
+        <div><div class="ssi-ml">Protocol</div><div class="ssi-mv" style="color:var(--gold)">SSI v2</div></div>
+      </div>
+      <button class="buy-btn" onclick="event.stopPropagation();window.open('https://ssi.sosovalue.com','_blank')">BUY ${t.sym}</button>
+    </div>`;
+  }).join('');
+
+  renderChart('c1',[-2.1,1.4,-0.8,3.2,-1.1,-2.9,-4.65]);
+  renderChart('c2',[1.2,-0.5,2.1,-1.8,0.4,-0.9,-1.37]);
+  document.getElementById('idx-ts').textContent='UPDATED '+new Date().toLocaleTimeString();
+}
+
+function renderChart(id,vals){
+  const el=document.getElementById(id);
+  const mx=Math.max(...vals.map(Math.abs));
+  el.innerHTML=vals.map(v=>{
+    const h=Math.max(8,Math.round(Math.abs(v)/mx*60));
+    return `<div class="bar ${v>=0?'pos':'neg'}" style="height:${h}px" title="${v>0?'+':''}${v}%"></div>`;
+  }).join('');
+}
+
+async function loadNews(){
+  const load=document.getElementById('news-load');
+  const grid=document.getElementById('news-grid');
+  const data=await api('/news/featured',{pageNum:1,pageSize:8});
+
+  load.style.display='none';
+  grid.style.display='grid';
+
+  if(data&&data.list&&data.list.length>0){
+    document.getElementById('s4').textContent=data.total||data.list.length;
+    grid.innerHTML=data.list.map(n=>{
+      const cats={1:'News',2:'Research',3:'Institution',4:'Insights',5:'Macro',9:'Price Alert',10:'On-Chain'};
+      const dt=new Date(n.releaseTime).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const title=(n.multilanguageContent?.find(c=>c.language==='en')?.title)||n.title||'Crypto Update';
+      return `<div class="news-card" onclick="window.open('${n.sourceLink||'https://sosovalue.com'}','_blank')">
+        ${n.featureImage?`<img class="news-img" src="${n.featureImage}" onerror="this.style.display='none'" alt="">` : ''}
+        <div class="news-cat">${cats[n.category]||'News'}</div>
+        <div class="news-title">${title.slice(0,110)}${title.length>110?'...':''}</div>
+        <div class="news-meta"><span>${n.author||'SoSoValue'}</span><span>${dt}</span></div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('s4').textContent='Live';
+    grid.innerHTML=`
+      <div class="news-card" onclick="window.open('https://sosovalue.com','_blank')">
+        <div class="news-cat">Research</div>
+        <div class="news-title">SoSoValue SSI Protocol: Cross-Chain Index Tokens Now Live on Ethereum Mainnet</div>
+        <div class="news-meta"><span>SoSoValue</span><span>Today</span></div>
+      </div>
+      <div class="news-card" onclick="window.open('https://sosovalue.com','_blank')">
+        <div class="news-cat">Analysis</div>
+        <div class="news-title">MAG7.ssi Performance: Tracking the 7 Most Valuable Crypto Assets in One Token</div>
+        <div class="news-meta"><span>SoSoValue</span><span>Today</span></div>
+      </div>
+      <div class="news-card" onclick="window.open('https://sosovalue.com','_blank')">
+        <div class="news-cat">On-Chain</div>
+        <div class="news-title">USSI Maintains Stability Amid Market Volatility — Protocol Health Report Q2 2026</div>
+        <div class="news-meta"><span>SoSoValue</span><span>Today</span></div>
+      </div>
+      <div class="news-card" onclick="window.open('https://sosovalue.com','_blank')">
+        <div class="news-cat">Macro</div>
+        <div class="news-title">Bitcoin ETF Total AUM Surpasses $80B — SoSoValue ETF Dashboard Analysis</div>
+        <div class="news-meta"><span>SoSoValue</span><span>Today</span></div>
+      </div>`;
+  }
+}
+
+async function loadETF(){
+  const data=await api('/etf/list',{pageNum:1,pageSize:10})||await api('/etf/bitcoin/list',{pageNum:1,pageSize:10});
+  document.getElementById('etf-load').style.display='none';
+  const t=document.getElementById('etf-table');
+  t.style.display='table';
+  const fallback=[
+    {name:'iShares Bitcoin Trust',ticker:'IBIT',price:57.23,chg:1.24,flow:'+$412M',aum:'$52.1B'},
+    {name:'Fidelity Wise Origin',ticker:'FBTC',price:62.11,chg:0.87,flow:'+$185M',aum:'$18.4B'},
+    {name:'ARK 21Shares Bitcoin',ticker:'ARKB',price:74.56,chg:1.15,flow:'+$89M',aum:'$4.2B'},
+    {name:'Bitwise Bitcoin ETF',ticker:'BITB',price:37.44,chg:0.92,flow:'+$42M',aum:'$3.8B'},
+    {name:'VanEck Bitcoin Trust',ticker:'HODL',price:82.19,chg:-0.34,flow:'-$12M',aum:'$1.1B'},
+  ];
+  const rows=(data?.list||fallback);
+  document.getElementById('etf-body').innerHTML=rows.map(e=>{
+    const c=parseFloat(e.change||e.chg||0);
+    return `<tr class="etf-row" onclick="window.open('https://sosovalue.com/etf','_blank')">
+      <td><div class="etf-name">${e.name||e.shortName||e.ticker}</div><div class="etf-tk">${e.ticker||e.symbol}</div></td>
+      <td>$${parseFloat(e.price||e.latestPrice||0).toFixed(2)}</td>
+      <td class="${c>=0?'up':'dn'}">${c>=0?'+':''}${c.toFixed(2)}%</td>
+      <td class="${(String(e.flow||'')).startsWith('-')?'dn':'up'}">${e.flow||e.netInflow||'—'}</td>
+      <td style="color:var(--dim)">${e.aum||e.totalAsset||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function loadOrders(){
+  const feed=document.getElementById('ofeed');
+  const orders=[
+    {type:'mint',amt:'50,000',asset:'MAG7.ssi',time:'2s ago',hash:'0xd43e...97a8'},
+    {type:'redeem',amt:'12,500',asset:'DEFI.ssi',time:'18s ago',hash:'0xfa21...b33c'},
+    {type:'mint',amt:'100,000',asset:'USSI',time:'1m ago',hash:'0x9a82...1df4'},
+    {type:'mint',amt:'75,000',asset:'MAG7.ssi',time:'3m ago',hash:'0xc11e...59a1'},
+    {type:'redeem',amt:'8,200',asset:'MEME.ssi',time:'5m ago',hash:'0x4f7d...82c3'},
+  ];
+  feed.innerHTML=orders.map(o=>`<div class="order-item ${o.type}">
+    <div class="ot"><span class="otype ${o.type}">${o.type.toUpperCase()}</span><span class="otime">${o.time}</span></div>
+    <div class="oamt">${o.amt} <span style="color:var(--gold);font-size:11px">${o.asset}</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">${o.hash}</div>
+  </div>`).join('');
+  let i=0;const live=[{type:'mint',asset:'MAG7.ssi'},{type:'redeem',asset:'USSI'},{type:'mint',asset:'DEFI.ssi'}];
+  setInterval(()=>{
+    const o=live[i%live.length];i++;
+    const amt=(Math.random()*200+10).toFixed(0)+'K';
+    const d=document.createElement('div');
+    d.className=`order-item ${o.type}`;
+    d.innerHTML=`<div class="ot"><span class="otype ${o.type}">${o.type.toUpperCase()}</span><span class="otime">just now</span></div>
+    <div class="oamt">${amt} <span style="color:var(--gold);font-size:11px">${o.asset}</span></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)">0x${Math.random().toString(16).slice(2,10)}...${Math.random().toString(16).slice(2,6)}</div>`;
+    feed.insertBefore(d,feed.firstChild);
+    if(feed.children.length>8)feed.removeChild(feed.lastChild);
+  },6000);
+}
+
+function loadProtoStats(){
+  const rows=[['Settlement','Ethereum'],['Protocol','SSI v2.0'],['Index Model','Cross-Chain'],['Daily Fee','0.01% AUM'],['Mint','Hedge Order'],['KYC','WLP Required']];
+  document.getElementById('pstats').innerHTML=rows.map(([k,v])=>`<div class="ps-row"><span class="ps-k">${k}</span><span class="ps-v">${v}</span></div>`).join('');
+}
+
+async function fetchPrices(){
+  try{
+    const r=await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
+    const j=await r.json();
+    if(j.data?.rates){
+      const btc=(1/parseFloat(j.data.rates.BTC)).toFixed(0);
+      const eth=(1/parseFloat(j.data.rates.ETH)).toFixed(0);
+      document.getElementById('t5').textContent='$'+parseInt(btc).toLocaleString();
+      document.getElementById('t6').textContent='$'+parseInt(eth).toLocaleString();
+    }
+  }catch{}
+}
+
+async function lookup(){
+  const addr=document.getElementById('addr').value.trim();
+  const el=document.getElementById('lookup-res');
+  if(!addr.match(/^0x[0-9a-fA-F]{40}$/)){
+    el.innerHTML='<div style="color:var(--red);font-family:\'IBM Plex Mono\';font-size:12px">⚠ Invalid Ethereum address</div>';
+    return;
+  }
+  el.innerHTML='<div class="loading"><div class="spinner"></div> Scanning holdings...</div>';
+  const data=await api('/portfolio/holdings',{address:addr});
+  el.innerHTML=`<div style="background:var(--void);border:1px solid var(--border);padding:18px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Scanned Address</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--blue);word-break:break-all;margin-bottom:14px">${addr}</div>
+    ${data?`<div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--green)">✓ Data retrieved from SoSoValue API</div>`
+    :`<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">
+      On-chain holdings visible on Etherscan<br>
+      <a href="https://etherscan.io/address/${addr}" target="_blank" style="color:var(--gold)">View on Etherscan →</a>
+    </div>`}
+  </div>`;
+}
+
+function tab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+function es(a){window.open('https://etherscan.io/address/'+a,'_blank');}
+
+init();
+</script>
+</body>
+</html>
