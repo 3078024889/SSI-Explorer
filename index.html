@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSI Explorer — On-Chain Index Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--black:#080a0e;--void:#0c0f14;--panel:#111520;--border:#1c2233;--border2:#253045;--gold:#c8a85a;--gold2:#e8c97a;--green:#2dff8a;--red:#ff3d6b;--blue:#4d9fff;--muted:#4a5568;--dim:#718096;--text:#cbd5e0;--bright:#e2e8f0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--black);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999;}
+.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(200,168,90,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,90,.04) 1px,transparent 1px);background-size:40px 40px;}
+.bg-glow{position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(200,168,90,.06) 0%,transparent 70%);pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 24px 80px;}
+header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 32px;border-bottom:1px solid var(--border);margin-bottom:32px;flex-wrap:wrap;gap:12px;}
+.logo-mark{font-family:'Bebas Neue',cursive;font-size:32px;letter-spacing:4px;color:var(--gold);}
+.logo-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em;margin-top:2px;}
+.status-bar{display:flex;align-items:center;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;flex-wrap:wrap;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite;display:inline-block;margin-right:5px;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.badge{padding:4px 12px;border-radius:2px;font-size:11px;letter-spacing:.08em;}
+.badge-gold{background:rgba(200,168,90,.08);border:1px solid rgba(200,168,90,.2);color:var(--gold);}
+.badge-green{background:rgba(45,255,138,.08);border:1px solid rgba(45,255,138,.2);color:var(--green);}
+.badge-dim{background:rgba(113,128,150,.08);border:1px solid rgba(113,128,150,.2);color:var(--dim);}
+/* TICKER */
+.ticker-wrap{overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 0;margin-bottom:32px;background:var(--void);}
+.ticker{display:flex;gap:60px;animation:ticker 35s linear infinite;white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px;width:max-content;}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ti{display:flex;align-items:center;gap:6px;color:var(--dim);}
+.ti-sym{color:var(--gold);font-weight:500;}
+.up{color:var(--green);}
+.dn{color:var(--red);}
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:32px;background:var(--border);}
+.stat-card{background:var(--panel);padding:22px 18px;}
+.stat-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.stat-val{font-family:'Bebas Neue',cursive;font-size:28px;letter-spacing:2px;color:var(--bright);line-height:1;}
+.stat-val.g{color:var(--gold2);}
+.stat-val.gr{color:var(--green);}
+.stat-unit{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-top:4px;}
+/* TABS */
+.main-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:28px;flex-wrap:wrap;}
+.main-tab{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:13px 22px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.main-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.main-tab:hover:not(.active){color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+/* SSI CARDS */
+.ssi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;margin-bottom:28px;}
+.ssi-card{background:var(--panel);border:1px solid var(--border);padding:22px;cursor:pointer;transition:border-color .2s,transform .15s;position:relative;overflow:hidden;}
+.ssi-card:hover{border-color:var(--gold);transform:translateY(-2px);}
+.ssi-sym{font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:2px;color:var(--gold2);margin-bottom:2px;}
+.ssi-name{font-size:11px;color:var(--dim);margin-bottom:14px;font-family:'IBM Plex Mono',monospace;}
+.ssi-price{font-family:'Bebas Neue',cursive;font-size:34px;color:var(--bright);letter-spacing:1px;}
+.ssi-chg{font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:3px;}
+.ssi-meta{display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);gap:6px;}
+.ssi-ml{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;}
+.ssi-mv{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);}
+.buy-btn{display:block;width:100%;margin-top:14px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;border:none;padding:9px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;cursor:pointer;transition:opacity .2s;}
+.buy-btn:hover{opacity:.85;}
+/* ORDER FEED */
+.two-col{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:20px;}
+.order-feed{display:flex;flex-direction:column;gap:1px;min-height:60px;}
+.order-item{background:var(--void);padding:11px 14px;border-left:2px solid transparent;animation:sli .4s ease;}
+@keyframes sli{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
+.order-item.mint{border-left-color:var(--green);}
+.order-item.redeem{border-left-color:var(--red);}
+.ot{display:flex;justify-content:space-between;margin-bottom:3px;}
+.otype{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;}
+.otype.mint{color:var(--green);}
+.otype.redeem{color:var(--red);}
+.otime{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;}
+.otime:hover{color:var(--gold);}
+.oamt{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--bright);}
+/* PORTFOLIO */
+.lookup-box{background:var(--panel);border:1px solid var(--border);padding:26px;margin-bottom:24px;}
+.lookup-form{display:flex;gap:10px;}
+.lookup-input{flex:1;background:var(--void);border:1px solid var(--border2);color:var(--bright);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:11px 14px;outline:none;transition:border-color .2s;}
+.lookup-input:focus{border-color:var(--gold);}
+.lookup-input::placeholder{color:var(--muted);}
+.btn-gold{background:var(--gold);color:#000;border:none;cursor:pointer;font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:2px;padding:11px 26px;transition:background .2s;}
+.btn-gold:hover{background:var(--gold2);}
+.hold-row{display:flex;justify-content:space-between;background:var(--void);padding:12px 16px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+.hold-row:last-child{border-bottom:none;}
+/* CONTRACTS */
+.contract-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);}
+.cc{background:var(--panel);padding:18px;}
+.cr{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.ca{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);cursor:pointer;}
+.ca:hover{color:var(--gold);}
+/* CHARTS / MISC */
+.chart-card{background:var(--panel);border:1px solid var(--border);padding:20px;margin-bottom:24px;}
+.chart-title{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;}
+/* LOADING */
+.loading{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);padding:36px 0;}
+.spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--red);padding:14px 0;}
+/* SEC HEADERS */
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px;}
+.st{font-family:'Bebas Neue',cursive;font-size:21px;letter-spacing:3px;color:var(--bright);}
+.st span{color:var(--gold);}
+.sm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;}
+.note{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:10px;line-height:1.6;}
+.note a{color:var(--gold);}
+/* PROTO STATS */
+.ps-row{background:var(--void);padding:11px 14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.ps-k{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:10px;}
+.ps-v{color:var(--bright);}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}.contract-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.ssi-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="app">
+
+<header>
+  <div>
+    <div class="logo-mark">SSI Explorer</div>
+    <div class="logo-sub">On-Chain Index Intelligence · Live Base-Chain Data</div>
+  </div>
+  <div class="status-bar">
+    <span><span class="dot"></span>Live</span>
+    <span class="badge badge-gold">BASE MAINNET</span>
+    <span class="badge badge-green" id="rpc-badge">RPC ✓</span>
+    <span class="badge badge-dim" id="dex-badge">DEXSCREENER ✓</span>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)" id="blk">Block —</span>
+  </div>
+</header>
+
+<div class="ticker-wrap">
+  <div class="ticker" id="ticker"></div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-label">SSI Products</div><div class="stat-val g">4</div><div class="stat-unit">INDEX TOKENS · BASE</div></div>
+  <div class="stat-card"><div class="stat-label">USSI Price</div><div class="stat-val gr" id="s2">—</div><div class="stat-unit">USD STABLE INDEX</div></div>
+  <div class="stat-card"><div class="stat-label">MAG7.ssi</div><div class="stat-val" id="s3">—</div><div class="stat-unit">24H: <span id="s3c">—</span></div></div>
+  <div class="stat-card"><div class="stat-label">Total On-Chain AUM</div><div class="stat-val g" id="s4">—</div><div class="stat-unit">SUPPLY × PRICE, LIVE</div></div>
+</div>
+
+<div class="main-tabs">
+  <button class="main-tab active" onclick="tab('indexes',this)">SSI Indexes</button>
+  <button class="main-tab" onclick="tab('activity',this)">Mint/Redeem Activity</button>
+  <button class="main-tab" onclick="tab('portfolio',this)">Portfolio</button>
+  <button class="main-tab" onclick="tab('contracts',this)">Contracts</button>
+</div>
+
+<!-- INDEXES -->
+<div class="tab-panel active" id="tab-indexes">
+  <div class="sh"><div class="st">SSI <span>Index</span> Tokens</div><div class="sm" id="idx-ts">LOADING...</div></div>
+  <div id="idx-load" class="loading"><div class="spinner"></div> Reading Base chain + DexScreener...</div>
+  <div class="ssi-grid" id="ssi-grid" style="display:none"></div>
+  <div class="note">Price and volume come from live Uniswap-on-Base pools via the public DexScreener API. Supply comes directly from each token contract's <code>totalSupply()</code>, read from Base RPC. No hardcoded numbers.</div>
+</div>
+
+<!-- ACTIVITY -->
+<div class="tab-panel" id="tab-activity">
+  <div class="sh"><div class="st">Mint / <span>Redeem</span> Activity</div><div class="sm" id="act-ts">SCANNING CHAIN...</div></div>
+  <div class="two-col">
+    <div>
+      <div id="act-load" class="loading"><div class="spinner"></div> Scanning recent Transfer events on Base...</div>
+      <div class="order-feed" id="ofeed"></div>
+      <div class="note">Each entry is a real ERC-20 <code>Transfer</code> event read from Base via <code>eth_getLogs</code>, where the sender or receiver is the zero address — the on-chain signature of a mint or a redeem. Click a block number to view it on BaseScan. This list refreshes automatically as new blocks arrive.</div>
+    </div>
+    <div>
+      <div class="sh"><div class="st">Protocol <span>Stats</span></div><div class="sm">LIVE</div></div>
+      <div id="pstats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PORTFOLIO -->
+<div class="tab-panel" id="tab-portfolio">
+  <div class="sh"><div class="st">Portfolio <span>Lookup</span></div><div class="sm">ANY BASE ADDRESS</div></div>
+  <div class="lookup-box">
+    <div class="lookup-form">
+      <input class="lookup-input" id="addr" placeholder="Enter a Base address (0x...)">
+      <button class="btn-gold" onclick="lookup()">SCAN</button>
+    </div>
+    <div id="lookup-res" style="margin-top:16px;"></div>
+  </div>
+  <div class="note">This performs a live <code>balanceOf()</code> call against each SSI index token contract on Base for the address you enter. Nothing is cached or simulated — try your own wallet, or a known WLP address from the Contracts tab.</div>
+</div>
+
+<!-- CONTRACTS -->
+<div class="tab-panel" id="tab-contracts">
+  <div class="sh"><div class="st">Contract <span>Registry</span></div><div class="sm">BASE MAINNET</div></div>
+  <div class="contract-grid" id="contract-grid"></div>
+  <div class="note">Addresses sourced from SoSoValue's official "Key Addresses (on Base)" documentation. Click any address to view it live on BaseScan.</div>
+</div>
+
+</div>
+<script>
+/* ---------- config ---------- */
+const RPCS=['https://mainnet.base.org','https://base.llamarpc.com','https://base-rpc.publicnode.com'];
+const EXPLORER='https://basescan.org';
+const ZERO_TOPIC='0x'+'0'.repeat(64);
+const TRANSFER_TOPIC='0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+const TOKENS=[
+  {sym:'MAG7.ssi',name:'Magnificent 7 Index',address:'0x9E6A46f294bB67c20F1D1E7AfB0bBEf614403B55',col:'#e8c97a'},
+  {sym:'DEFI.ssi',name:'DeFi Blue Chips',address:'0x164ffdaE2fe3891714bc2968f1875ca4fA1079D0',col:'#4d9fff'},
+  {sym:'MEME.ssi',name:'Meme Index',address:'0xdd3acDBDc7b358Df453a6CB6bCA56C92aA5743aA',col:'#ff3d6b'},
+  {sym:'USSI',name:'USD Stable Index',address:'0x3a46ed8FCeb6eF1ADA2E4600A522AE7e24D2Ed18',col:'#2dff8a'},
+];
+
+const CONTRACTS=[
+  {name:'AssetFactory',address:'0xb04eB6b64137d1673D46731C8f84718092c50B0D'},
+  {name:'AssetIssuer',address:'0xdc74D8C5D9a900fdF8a6D03Ad419b236c9A1AD1d'},
+  {name:'Rebalancer',address:'0x242626E1eCe44601A69d9BC3f72a755Eb393f4b1'},
+  {name:'FeeManager',address:'0x996c93827Ab4C55B1044aDd903D2bDb0dcd546BA'},
+  {name:'Swap',address:'0x640cB7201810BC920835A598248c4fe4898Bb5e0'},
+  {name:'AssetLocking',address:'0x935A4B1F6F3E891a226b2522ac22d45Ce5839383'},
+];
+
+/* ---------- rpc helpers ---------- */
+let rpcOK=false;
+async function rpc(method,params){
+  for(const url of RPCS){
+    try{
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+      const j=await r.json();
+      if(j.result!==undefined){rpcOK=true;return j.result;}
+    }catch(e){/* try next endpoint */}
+  }
+  return null;
+}
+function padAddr(a){return '000000000000000000000000'+a.slice(2).toLowerCase();}
+async function ethCall(to,data){return rpc('eth_call',[{to,data},'latest']);}
+function hexToBig(h){if(!h||h==='0x')return 0n;return BigInt(h);}
+function formatUnits(big,decimals){
+  const neg=big<0n; if(neg)big=-big;
+  const s=big.toString().padStart(decimals+1,'0');
+  const i=s.slice(0,s.length-decimals)||'0';
+  const f=s.slice(s.length-decimals).slice(0,4);
+  return (neg?'-':'')+i+(decimals>0?'.'+f:'');
+}
+async function getDecimals(addr){
+  const r=await ethCall(addr,'0x313ce567');
+  return r?parseInt(r,16):18;
+}
+async function getTotalSupply(addr){
+  const r=await ethCall(addr,'0x18160ddd');
+  return r?hexToBig(r):0n;
+}
+async function getBalance(addr,who){
+  const r=await ethCall(addr,'0x70a08231'+padAddr(who));
+  return r?hexToBig(r):0n;
+}
+
+/* ---------- state ---------- */
+const STATE={}; // sym -> {decimals, supply, priceUsd, chg24, vol24, liq}
+
+async function loadTokenMeta(){
+  await Promise.all(TOKENS.map(async t=>{
+    const [dec,sup]=await Promise.all([getDecimals(t.address),getTotalSupply(t.address)]);
+    STATE[t.sym]={decimals:dec,supply:sup};
+  }));
+}
+
+async function loadDexPrices(){
+  try{
+    const addrs=TOKENS.map(t=>t.address).join(',');
+    const r=await fetch('https://api.dexscreener.com/latest/dex/tokens/'+addrs);
+    const j=await r.json();
+    document.getElementById('dex-badge').textContent='DEXSCREENER ✓';
+    const pairs=j.pairs||[];
+    TOKENS.forEach(t=>{
+      const matches=pairs.filter(p=>p.baseToken && p.baseToken.address && p.baseToken.address.toLowerCase()===t.address.toLowerCase() && p.chainId==='base');
+      matches.sort((a,b)=>(b.liquidity?.usd||0)-(a.liquidity?.usd||0));
+      const best=matches[0];
+      const st=STATE[t.sym]||{};
+      if(best){
+        st.priceUsd=parseFloat(best.priceUsd||0);
+        st.chg24=parseFloat(best.priceChange?.h24||0);
+        st.vol24=parseFloat(best.volume?.h24||0);
+        st.liq=parseFloat(best.liquidity?.usd||0);
+        st.pairUrl=best.url;
+      }
+      STATE[t.sym]=st;
+    });
+  }catch(e){
+    document.getElementById('dex-badge').textContent='DEXSCREENER ⚠';
+  }
+}
+
+function fmtUsd(n){
+  if(n===undefined||n===null||isNaN(n))return '—';
+  if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return '$'+(n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return '$'+(n/1e3).toFixed(1)+'K';
+  return '$'+n.toFixed(n<1?4:2);
+}
+
+/* ---------- render: indexes ---------- */
+function renderIndexes(){
+  document.getElementById('idx-load').style.display='none';
+  const g=document.getElementById('ssi-grid');
+  g.style.display='grid';
+  g.innerHTML=TOKENS.map(t=>{
+    const st=STATE[t.sym]||{};
+    const up=(st.chg24||0)>=0;
+    const supplyNum=st.supply!==undefined?parseFloat(formatUnits(st.supply,st.decimals)):0;
+    const mcap=st.priceUsd?supplyNum*st.priceUsd:null;
+    return `<div class="ssi-card" onclick="${st.pairUrl?`window.open('${st.pairUrl}','_blank')`:`window.open('https://ssi.sosovalue.com/en/buy/${t.sym}','_blank')`}">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${t.col},transparent)"></div>
+      <div class="ssi-sym">${t.sym}</div>
+      <div class="ssi-name">${t.name}</div>
+      <div class="ssi-price">${st.priceUsd?'$'+st.priceUsd.toFixed(st.priceUsd<1?4:2):'—'}</div>
+      <div class="ssi-chg ${st.chg24!==undefined?(up?'up':'dn'):''}">${st.chg24!==undefined?(up?'▲':'▼')+' '+Math.abs(st.chg24).toFixed(2)+'% (24h)':'no live pool found'}</div>
+      <div class="ssi-meta">
+        <div><div class="ssi-ml">Volume 24H</div><div class="ssi-mv">${fmtUsd(st.vol24)}</div></div>
+        <div><div class="ssi-ml">Supply</div><div class="ssi-mv">${supplyNum?supplyNum.toLocaleString(undefined,{maximumFractionDigits:0}):'—'}</div></div>
+        <div><div class="ssi-ml">Mkt Cap</div><div class="ssi-mv" style="color:var(--gold)">${mcap?fmtUsd(mcap):'—'}</div></div>
+      </div>
+      <button class="buy-btn" onclick="event.stopPropagation();window.open('https://ssi.sosovalue.com/en/buy/${t.sym}','_blank')">VIEW ${t.sym}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('idx-ts').textContent='UPDATED '+new Date().toLocaleTimeString();
+
+  const mag7=STATE['MAG7.ssi']||{}, ussi=STATE['USSI']||{};
+  document.getElementById('s2').textContent=ussi.priceUsd?'$'+ussi.priceUsd.toFixed(4):'—';
+  document.getElementById('s3').textContent=mag7.priceUsd?'$'+mag7.priceUsd.toFixed(4):'—';
+  document.getElementById('s3c').textContent=mag7.chg24!==undefined?mag7.chg24.toFixed(2)+'%':'—';
+  document.getElementById('s3c').style.color=(mag7.chg24||0)>=0?'var(--green)':'var(--red)';
+  const totalAum=TOKENS.reduce((sum,t)=>{
+    const st=STATE[t.sym]||{};
+    if(!st.priceUsd||st.supply===undefined)return sum;
+    return sum+parseFloat(formatUnits(st.supply,st.decimals))*st.priceUsd;
+  },0);
+  document.getElementById('s4').textContent=totalAum?fmtUsd(totalAum):'—';
+
+  renderTicker();
+}
+
+function renderTicker(){
+  const items=TOKENS.map(t=>{
+    const st=STATE[t.sym]||{};
+    const up=(st.chg24||0)>=0;
+    return `<span class="ti"><span class="ti-sym">${t.sym}</span><span class="${up?'up':'dn'}">${st.priceUsd?'$'+st.priceUsd.toFixed(4):'—'} ${st.chg24!==undefined?(up?'▲':'▼')+Math.abs(st.chg24).toFixed(2)+'%':''}</span></span>`;
+  }).join('');
+  document.getElementById('ticker').innerHTML=items+items; // duplicate for seamless loop
+}
+
+/* ---------- activity: real mint/redeem via Transfer logs ---------- */
+let lastScannedBlock=null;
+async function scanActivity(fromBlockOverride){
+  const latestHex=await rpc('eth_blockNumber',[]);
+  if(!latestHex)return;
+  const latest=parseInt(latestHex,16);
+  const from=fromBlockOverride!==undefined?fromBlockOverride:Math.max(0,latest-6000); // ~ a few hours on Base
+  const fromHex='0x'+from.toString(16);
+
+  const all=[];
+  await Promise.all(TOKENS.map(async t=>{
+    const logs=await rpc('eth_getLogs',[{address:t.address,fromBlock:fromHex,toBlock:latestHex,topics:[TRANSFER_TOPIC]}]);
+    if(!Array.isArray(logs))return;
+    const dec=(STATE[t.sym]||{}).decimals??18;
+    logs.forEach(l=>{
+      const isMint=l.topics[1]===ZERO_TOPIC;
+      const isRedeem=l.topics[2]===ZERO_TOPIC;
+      if(!isMint&&!isRedeem)return;
+      all.push({
+        type:isMint?'mint':'redeem',
+        sym:t.sym,
+        amt:formatUnits(hexToBig(l.data),dec),
+        block:parseInt(l.blockNumber,16),
+        tx:l.transactionHash
+      });
+    });
+  }));
+  all.sort((a,b)=>b.block-a.block);
+  lastScannedBlock=latest;
+  return all.slice(0,12);
+}
+
+function renderActivity(items){
+  document.getElementById('act-load').style.display='none';
+  const feed=document.getElementById('ofeed');
+  document.getElementById('act-ts').textContent='LAST '+(6000).toLocaleString()+' BLOCKS · '+new Date().toLocaleTimeString();
+  if(!items||items.length===0){
+    feed.innerHTML='<div class="note">No mint or redeem events found in the recent block window — this happens when there is a quiet period. The scanner keeps checking automatically.</div>';
+    return;
+  }
+  feed.innerHTML=items.map(o=>`<div class="order-item ${o.type}">
+    <div class="ot"><span class="otype ${o.type}">${o.type.toUpperCase()}</span><span class="otime" onclick="window.open('${EXPLORER}/tx/${o.tx}','_blank')">block ${o.block.toLocaleString()} ↗</span></div>
+    <div class="oamt">${parseFloat(o.amt).toLocaleString(undefined,{maximumFractionDigits:2})} <span style="color:var(--gold);font-size:11px">${o.sym}</span></div>
+  </div>`).join('');
+}
+
+function renderProtoStats(){
+  const rows=[
+    ['Chain','Base (8453)'],
+    ['Products','MAG7.ssi · DEFI.ssi · MEME.ssi · USSI'],
+    ['Fee Model','0.01% AUM / day (protocol docs)'],
+    ['Mint/Redeem','Whitelisted Participants (WLP) only'],
+    ['Data Source','Base RPC + DexScreener, live'],
+  ];
+  document.getElementById('pstats').innerHTML=rows.map(([k,v])=>`<div class="ps-row"><span class="ps-k">${k}</span><span class="ps-v">${v}</span></div>`).join('');
+}
+
+/* ---------- portfolio ---------- */
+async function lookup(){
+  const addr=document.getElementById('addr').value.trim();
+  const el=document.getElementById('lookup-res');
+  if(!addr.match(/^0x[0-9a-fA-F]{40}$/)){
+    el.innerHTML='<div class="err">⚠ Invalid address — expected a 0x-prefixed 40-hex-character Base address</div>';
+    return;
+  }
+  el.innerHTML='<div class="loading"><div class="spinner"></div> Reading balances from Base...</div>';
+  const results=await Promise.all(TOKENS.map(async t=>{
+    const dec=(STATE[t.sym]||{}).decimals??(await getDecimals(t.address));
+    const bal=await getBalance(t.address,addr);
+    return {sym:t.sym,bal:formatUnits(bal,dec),raw:bal};
+  }));
+  const held=results.filter(r=>r.raw>0n);
+  el.innerHTML=`<div style="background:var(--void);border:1px solid var(--border);padding:18px;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Scanned Address</div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--blue);word-break:break-all;margin-bottom:14px">${addr} · <a href="${EXPLORER}/address/${addr}" target="_blank" style="color:var(--gold)">View on BaseScan →</a></div>
+    ${held.length?held.map(r=>`<div class="hold-row"><span>${r.sym}</span><span>${parseFloat(r.bal).toLocaleString(undefined,{maximumFractionDigits:4})}</span></div>`).join('')
+      :'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--muted)">No SSI index token balance found for this address on Base.</div>'}
+  </div>`;
+}
+
+/* ---------- contracts ---------- */
+function renderContracts(){
+  document.getElementById('contract-grid').innerHTML=CONTRACTS.map(c=>
+    `<div class="cc"><div class="cr">${c.name}</div><div class="ca" onclick="es('${c.address}')">${c.address.slice(0,6)}...${c.address.slice(-4)}</div></div>`
+  ).join('')+TOKENS.map(t=>
+    `<div class="cc"><div class="cr">${t.sym} Token</div><div class="ca" onclick="es('${t.address}')">${t.address.slice(0,6)}...${t.address.slice(-4)}</div></div>`
+  ).join('');
+}
+function es(a){window.open(EXPLORER+'/address/'+a,'_blank');}
+
+/* ---------- tabs ---------- */
+function tab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ---------- BTC/ETH from Coinbase (kept, already real) ---------- */
+async function fetchBtcEth(){
+  try{
+    const r=await fetch('https://api.coinbase.com/v2/exchange-rates?currency=USD');
+    const j=await r.json();
+    if(j.data?.rates){
+      const btc=(1/parseFloat(j.data.rates.BTC));
+      const eth=(1/parseFloat(j.data.rates.ETH));
+      return {btc,eth};
+    }
+  }catch{}
+  return {};
+}
+
+/* ---------- init ---------- */
+async function refreshBlock(){
+  const b=await rpc('eth_blockNumber',[]);
+  document.getElementById('rpc-badge').textContent=b?'RPC ✓':'RPC ⚠';
+  if(b)document.getElementById('blk').textContent='#'+parseInt(b,16).toLocaleString();
+}
+
+async function init(){
+  renderProtoStats();
+  renderContracts();
+  await refreshBlock();
+  await loadTokenMeta();
+  await loadDexPrices();
+  renderIndexes();
+
+  document.getElementById('idx-load').style.display='none';
+  const items=await scanActivity();
+  renderActivity(items);
+
+  setInterval(refreshBlock,12000);
+  setInterval(async()=>{await loadDexPrices();renderIndexes();},20000);
+  setInterval(async()=>{const items=await scanActivity();renderActivity(items);},25000);
+}
+
+init();
+</script>
+</body>
+</html>
